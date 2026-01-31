@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventure | Atomic Seat Reservation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0f172a;
+            --bg-glass: rgba(30, 41, 59, 0.7);
+            --primary: #6366f1;
+            --available: #10b981;
+            --held: #f59e0b;
+            --booked: #ef4444;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3rem;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 1000px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .user-selector {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+        }
+
+        select,
+        input {
+            background: #1e293b;
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot.available {
+            background: var(--available);
+        }
+
+        .dot.held {
+            background: var(--held);
+        }
+
+        .dot.booked {
+            background: var(--booked);
+        }
+
+        .seat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .seat {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .seat:hover:not(.booked) {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .seat.available {
+            border-bottom: 4px solid var(--available);
+        }
+
+        .seat.held {
+            border-bottom: 4px solid var(--held);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .seat.booked {
+            border-bottom: 4px solid var(--booked);
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .seat-name {
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        .seat-status-text {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+        }
+
+        .countdown {
+            font-size: 0.75rem;
+            color: var(--held);
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-refresh {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-refresh:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-confirm {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-confirm:hover {
+            transform: scale(1.05);
+            background: #4f46e5;
+        }
+
+        .btn-confirm:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #action-panel {
+            display: none;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 24px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .toast-list {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 16px 24px;
+            border-radius: 12px;
+            background: #1e293b;
+            border-left: 4px solid var(--primary);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            animation: toastIn 0.3s ease-out;
+            min-width: 300px;
+        }
+
+        .toast.error {
+            border-left-color: var(--booked);
+        }
+
+        .toast.success {
+            border-left-color: var(--available);
+        }
+
+        @keyframes toastIn {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .badge-user {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Eventure</h1>
+        <p class="subtitle">Atomic Reservation Engine</p>
+    </header>
+
+    <div class="main-container">
+        <div class="user-selector">
+            <span>Actor:</span>
+            <select id="user-select">
+                <option value="user-1">Alice (user-1)</option>
+                <option value="user-2">Bob (user-2)</option>
+                <option value="user-3">Charlie (user-3)</option>
+                <option value="custom">Custom ID...</option>
+            </select>
+            <input type="text" id="custom-user-id" placeholder="Enter User ID" style="display:none;">
+            <div style="flex-grow: 1;"></div>
+            <div id="user-info"
+                style="color: var(--text-dim); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+                Identified as: <span class="badge-user" id="current-user-id">user-1</span>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="dot available"></div> Available
+            </div>
+            <div class="legend-item">
+                <div class="dot held"></div> Held
+            </div>
+            <div class="legend-item">
+                <div class="dot booked"></div> Booked
+            </div>
+        </div>
+
+        <div id="action-panel">
+            <div class="info-header">
+                <div>
+                    <h3 id="panel-seat-name">Seat --</h3>
+                    <p id="panel-status-desc" class="seat-status-text">Status: Unknown</p>
+                </div>
+                <div id="panel-countdown" class="countdown"></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button id="action-btn" class="btn-confirm">Interact</button>
+            </div>
+        </div>
+
+        <div class="seat-grid" id="seat-grid">
+            <!-- Seats will be loaded here -->
+        </div>
+
+        <div class="controls">
+            <div style="color: var(--text-dim); font-size: 0.8rem;">
+                *All actions are now cryptographically tied to your identity.
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn-refresh" id="seed-btn">Seed Event</button>
+                <button class="btn-refresh" id="refresh-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                    </svg>
+                    Sync State
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-list" id="toast-list"></div>
+
+    <script>
+        /**
+         * FRONTEND PHILOSOPHY:
+         * This interface is "dumb" and authoritative-agnostic. 
+         * It never assumes a state transition; it only reflects the last 
+         * known state returned by the Atomic Reservation Engine.
+         */
+        const API_BASE = '/api/seats';
+        let currentUserId = 'user-1';
+
+        const userSelect = document.getElementById('user-select');
+        const customUserInput = document.getElementById('custom-user-id');
+        const userIdDisplay = document.getElementById('current-user-id');
+
+        userSelect.onchange = () => {
+            if (userSelect.value === 'custom') {
+                customUserInput.style.display = 'block';
+            } else {
+                customUserInput.style.display = 'none';
+                updateIdentity(userSelect.value);
+            }
+        };
+
+        customUserInput.oninput = () => {
+            if (customUserInput.value.trim()) {
+                updateIdentity(customUserInput.value.trim());
+            }
+        };
+
+        function updateIdentity(id) {
+            currentUserId = id;
+            userIdDisplay.textContent = id;
+            syncGrid(); // Refresh grid to see items owned by this user
+            showToast(`Switched to identity: ${id}`, 'success');
+        }
+
+        let activeSeat = null;
+        let idempotencyKeys = {}; // seatId -> persistent key
+
+        async function syncGrid() {
+            try {
+                const res = await fetch(API_BASE, {
+                    headers: { 'X-User-Id': currentUserId }
+                });
+                if (res.status === 401) {
+                    showToast('Identity Rejected: User might not exist', 'error');
+                    return;
+                }
+                if (!res.ok) throw new Error('API Sync Failed');
+                const seats = await res.json();
+                renderSeats(seats);
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function seedEvent() {
+            const count = 20;
+            showToast(`Provisioning ${count} seats...`, 'success');
+            for (let i = 1; i <= count; i++) {
+                await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': currentUserId
+                    },
+                    body: JSON.stringify({
+                        eventId: 'GRAND-CONCERT-2026',
+                        seatNumber: 'A' + (i < 10 ? '0' : '') + i
+                    })
+                });
+            }
+            syncGrid();
+        }
+
+        function renderSeats(seats) {
+            const grid = document.getElementById('seat-grid');
+            grid.innerHTML = '';
+
+            if (seats.length === 0) {
+                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 40px;">No event data found. Click [Seed Event] to initialize.</p>';
+                return;
+            }
+
+            seats.sort((a, b) => a.seatNumber.localeCompare(b.seatNumber)).forEach(seat => {
+                const el = document.createElement('div');
+                el.className = `seat ${seat.status.toLowerCase()}`;
+
+                let label = seat.status;
+                if (seat.status === 'HELD' && seat.heldByUserId === currentUserId) {
+                    label = 'YOUR HOLD';
+                }
+
+                el.innerHTML = `
+                    <span class="seat-name">${seat.seatNumber}</span>
+                    <span class="seat-status-text">${label}</span>
+                    ${seat.status === 'HELD' ? `<div class="countdown" data-expires="${seat.holdExpiresAt}">--:--</div>` : ''}
+                `;
+
+                el.onclick = () => onSeatClick(seat);
+                grid.appendChild(el);
+            });
+
+            refreshCountdowns();
+        }
+
+        function onSeatClick(seat) {
+            if (seat.status === 'BOOKED') {
+                showToast('Seat is already finalized.', 'error');
+                return;
+            }
+
+            activeSeat = seat;
+            const panel = document.getElementById('action-panel');
+            const btn = document.getElementById('action-btn');
+
+            panel.style.display = 'block';
+            document.getElementById('panel-seat-name').textContent = `Seat ${seat.seatNumber}`;
+            document.getElementById('panel-status-desc').textContent = `Current status: ${seat.status} ${seat.heldByUserId === currentUserId ? '- Assigned to You' : ''}`;
+
+            btn.disabled = false;
+            if (seat.status === 'AVAILABLE') {
+                btn.textContent = 'Reserve (15m Hold)';
+                btn.onclick = () => performHold(seat.id);
+            } else if (seat.status === 'HELD' && seat.heldByUserId === currentUserId) {
+                btn.textContent = 'Checkout ($100.00)';
+                btn.onclick = () => performConfirm(seat.id);
+            } else {
+                btn.textContent = 'Held by Another User';
+                btn.disabled = true;
+            }
+        }
+
+        async function performHold(id) {
+            const btn = document.getElementById('action-btn');
+            btn.innerHTML = '<div class="loader"></div> Locking...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/${id}/hold`, {
+                    method: 'POST',
+                    headers: { 'X-User-Id': currentUserId }
+                });
+
+                if (res.ok) {
+                    showToast('Seat locked successfully!', 'success');
+                    await syncGrid();
+                    const fresh = await (await fetch(`${API_BASE}/${id}`, { headers: { 'X-User-Id': currentUserId } })).json();
+                    onSeatClick(fresh);
+                } else if (res.status === 401) {
+                    showToast('Authentication failed - User not found', 'error');
+                } else {
+                    const error = await res.json();
+                    showToast(error.message || 'Contention error', 'error');
+                    syncGrid();
+                }
+            } catch (e) {
+                showToast('Connection failed', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function performConfirm(id) {
+            if (!idempotencyKeys[id]) {
+                idempotencyKeys[id] = crypto.randomUUID();
+            }
+            const key = idempotencyKeys[id];
+
+            const btn = document.getElementById('action-btn');
+            btn.innerHTML = '<div class="loader"></div> Validating...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/${id}/confirm`, {
+                    method: 'POST',
+                    headers: {
+                        'X-User-Id': currentUserId,
+                        'X-Idempotency-Key': key
+                    }
+                });
+
+                if (res.ok) {
+                    showToast('Ticket Confirmed! 🎫', 'success');
+                    document.getElementById('action-panel').style.display = 'none';
+                    await syncGrid();
+                } else {
+                    const error = await res.json();
+                    showToast(error.message || 'Finalization failed', 'error');
+                    await syncGrid();
+                    const fresh = await (await fetch(`${API_BASE}/${id}`, { headers: { 'X-User-Id': currentUserId } })).json();
+                    onSeatClick(fresh);
+                }
+            } catch (e) {
+                showToast('Payment timeout? Retry button will use same key.', 'error');
+                btn.textContent = 'Retry Checkout';
+                btn.disabled = false;
+            }
+        }
+
+        function refreshCountdowns() {
+            document.querySelectorAll('.countdown').forEach(el => {
+                const target = new Date(el.dataset.expires).getTime();
+                const diff = target - Date.now();
+
+                if (diff <= 0) {
+                    el.textContent = 'STALE';
+                    el.style.color = 'var(--booked)';
+                } else {
+                    const m = Math.floor(diff / 60000);
+                    const s = Math.floor((diff % 60000) / 1000);
+                    el.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+                }
+            });
+        }
+
+        function showToast(msg, type) {
+            const list = document.getElementById('toast-list');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            list.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
+
+        document.getElementById('refresh-btn').onclick = syncGrid;
+        document.getElementById('seed-btn').onclick = seedEvent;
+
+        setInterval(refreshCountdowns, 1000);
+        syncGrid();
+    </script>
+</body>
+
+</html>
